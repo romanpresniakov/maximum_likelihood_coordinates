@@ -1,2 +1,5 @@
 polyscope
 numpy
+
+pillow
+triangle
