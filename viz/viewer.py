@@ -22,20 +22,7 @@ UV = (V2 - min_xy) / (max_xy - min_xy)
 
 W = compute_mlc(np.array(vertices), V2) # basic mlc
 print(W.shape)
-# count nans
-nan_mask = np.isnan(W)
-print(f"NaN count: {nan_mask.sum()} / {W.size}")
-print(f"Vertices with NaN: {np.any(nan_mask, axis=0).sum()} / {W.shape[1]}")
-
-# Check specific problematic vertices
-nan_vertices = np.where(np.any(nan_mask, axis=0))[0]
-if len(nan_vertices) > 0:
-    print(f"\nFirst few problematic vertices (indices): {nan_vertices[:5]}")
-    for idx in nan_vertices[:3]:
-        vertex = V2[idx]
-        print(f"\nVertex {idx}: {vertex}")
-        print(f"Distance to cage vertices: {np.linalg.norm(vertices - vertex, axis=1)}")
-
+print(np.isnan(W).sum())
 mesh = ps.register_surface_mesh("image", V, F)
 
 # Color each vertex by which cage vertex has the most influence
@@ -57,8 +44,7 @@ distinct_colors = np.array([
     [0.0, 0.5, 0.5],  # Teal
 ])
 
-colors = W.T @ distinct_colors[:W.shape[0]]
-colors = np.clip(colors, 0, 1)
+colors = distinct_colors[dominant_indices]
 
 mesh.add_color_quantity("dominant_cage_vertex", colors,
                        defined_on="vertices", enabled=True)
