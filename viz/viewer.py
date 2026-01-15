@@ -1,12 +1,12 @@
 import polyscope as ps
 import triangle
-from mlc.core import compute_bmlc
+from mlc.core import compute_bmlc, compute_mlc
 from data.shapes import *
 
 ps.init()
 
 _, _, texture = get_checkers_board_texture()
-vertices, edges = get_simple_pentagon_shape()
+vertices, edges = get_snake_shape()
 
 A = dict(vertices=vertices, segments=edges)
 # Options: p = PSLG, q = 20 deg minimum angle, a = max triangle area 0.01
@@ -20,8 +20,21 @@ max_xy = V2.max(axis=0)
 
 UV = (V2 - min_xy) / (max_xy - min_xy)
 
-W = compute_bmlc(np.array(vertices), V2) # basic mlc
+W = compute_mlc(np.array(vertices), V2) # basic mlc
 print(W.shape)
+# count nans
+nan_mask = np.isnan(W)
+print(f"NaN count: {nan_mask.sum()} / {W.size}")
+print(f"Vertices with NaN: {np.any(nan_mask, axis=0).sum()} / {W.shape[1]}")
+
+# Check specific problematic vertices
+nan_vertices = np.where(np.any(nan_mask, axis=0))[0]
+if len(nan_vertices) > 0:
+    print(f"\nFirst few problematic vertices (indices): {nan_vertices[:5]}")
+    for idx in nan_vertices[:3]:
+        vertex = V2[idx]
+        print(f"\nVertex {idx}: {vertex}")
+        print(f"Distance to cage vertices: {np.linalg.norm(vertices - vertex, axis=1)}")
 
 mesh = ps.register_surface_mesh("image", V, F)
 
@@ -44,7 +57,8 @@ distinct_colors = np.array([
     [0.0, 0.5, 0.5],  # Teal
 ])
 
-colors = distinct_colors[dominant_indices]
+colors = W.T @ distinct_colors[:W.shape[0]]
+colors = np.clip(colors, 0, 1)
 
 mesh.add_color_quantity("dominant_cage_vertex", colors,
                        defined_on="vertices", enabled=True)
