@@ -1,7 +1,8 @@
 import numpy as np
+from tqdm import tqdm
+from math_utils.biharmonic_distances import compute_biharmonic_distance_2d
 
-
-def basic_mlc_fast(cage: np.ndarray, vertex: np.ndarray):
+def basic_mlc_fast(cage: np.ndarray, vertex: np.ndarray, debug=False):
     """
     Vectorized implementation of Basic Maximum Likelihood Coordinates.
 
@@ -14,6 +15,15 @@ def basic_mlc_fast(cage: np.ndarray, vertex: np.ndarray):
     # Center the cage vertices (v_i = v_i - v)
     # shape(n, d)
     V = cage - vertex
+
+    if debug:
+        from scipy.spatial import Delaunay
+        try:
+            delaunay = Delaunay(cage)
+            is_inside = delaunay.find_simplex(vertex) >= 0
+            print(f"Vertex inside convex hull: {is_inside}")
+        except:
+            pass
 
     phi = np.zeros(d)
     eps = 1e-8
@@ -59,7 +69,6 @@ def basic_mlc_fast(cage: np.ndarray, vertex: np.ndarray):
                 break
 
         if not found_step:
-            print("Line search failed to find descent.")
             break
 
     bmlc = 1.0 / C
@@ -81,7 +90,7 @@ def compute_bmlc(cage: np.ndarray, vertices: np.ndarray):
     return W
 
 
-def mlc_fast(cage: np.ndarray, vertex: np.ndarray):
+def mlc_fast_2d(cage: np.ndarray, vertex: np.ndarray, smlc = False):
     """
     Vectorized implementation of Maximum Likelihood Coordinates.
     Args:
@@ -112,7 +121,17 @@ def mlc_fast(cage: np.ndarray, vertex: np.ndarray):
     T_projected = T / T_R[:, None]
     T_R = np.concatenate([T_R, [T_R[0]]])
 
+    distances = None
+    if smlc:
+        distances = compute_biharmonic_distance_2d(
+            cage,
+            vertex
+        )
+        T_projected /= distances[:, None]
+
     lambda_hat, phi = basic_mlc_fast(T_projected, np.zeros_like(vertex))  # compute bmlc for origin
+    if smlc:
+        lambda_hat /= distances
     lambda_hat = np.concatenate([[lambda_hat[-1]], lambda_hat, [lambda_hat[0]]])
     alpha = 1.0 / (S_R * T_R[:-1])
     beta = 1.0 / (S_R * T_R[1:])
@@ -125,7 +144,7 @@ def mlc_fast(cage: np.ndarray, vertex: np.ndarray):
     return mlc
 
 
-def compute_mlc(cage: np.ndarray, vertices: np.ndarray):
+def compute_mlc(cage: np.ndarray, vertices: np.ndarray, smlc = False):
     """
     Calls a vectorized implementation of Maximum Likelihood Coordinates.
     :param cage: (n, d) vertices of the polytope
@@ -133,7 +152,7 @@ def compute_mlc(cage: np.ndarray, vertices: np.ndarray):
     :return: Barycentric Coordinates
     """
     W = np.zeros(shape=(len(cage), len(vertices)))
-    for i in range(len(vertices)):
-        weights_i = mlc_fast(cage, vertices[i])
+    for i in tqdm(range(len(vertices))):
+        weights_i = mlc_fast_2d(cage, vertices[i], smlc)
         W[:, i] = weights_i
     return W

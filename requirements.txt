@@ -1,5 +1,7 @@
 polyscope
 numpy
-
-pillow
 triangle
+tqdm
+scipy
+trimesh
+matplotlib

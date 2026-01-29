@@ -8,7 +8,6 @@ ps.init()
 _, _, texture = get_checkers_board_texture()
 vertices, edges = get_snake_shape()
 
-# deformation now only manually
 vertices_deformed = vertices.copy()
 vertices_deformed[3] += np.array([-0.4, 0.9])
 vertices_deformed[4] += np.array([-0.4, 0.6])
@@ -21,7 +20,7 @@ V_original = np.column_stack([tri['vertices'], np.zeros(len(tri['vertices']))])
 F = np.array(tri['triangles'], dtype=int)
 
 W_bmlc = compute_bmlc(np.array(vertices), V2_original)
-W_mlc = compute_mlc(np.array(vertices), V2_original)
+W_mlc = compute_mlc(np.array(vertices), V2_original, True)
 
 print(f"BMLC shape: {W_bmlc.shape}, NaN: {np.isnan(W_bmlc).sum()}")
 print(f"MLC shape: {W_mlc.shape}, NaN: {np.isnan(W_mlc).sum()}")
@@ -47,7 +46,6 @@ mesh_mlc.add_parameterization_quantity("uv", UV, defined_on="vertices", enabled=
 mesh_mlc.add_color_quantity("texture", texture, defined_on='texture',
                            param_name='uv', enabled=True)
 
-# Offset meshes for side-by-side comparison
 mesh_original.set_transform(np.array([
     [1, 0, 0, -4.0],
     [0, 1, 0, 0],
