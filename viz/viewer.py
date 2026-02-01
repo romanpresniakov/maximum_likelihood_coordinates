@@ -1,17 +1,23 @@
+import numpy as np
 import polyscope as ps
 import triangle
 from mlc.core import compute_bmlc, compute_mlc
+from math_utils.jacobian import *
 from data.shapes import *
 
 ps.init()
 
 _, _, texture = get_checkers_board_texture()
-vertices, edges = get_snake_shape()
+vertices, edges = get_star_shape()
 
-vertices_deformed = vertices.copy()
-vertices_deformed[3] += np.array([-0.4, 0.9])
-vertices_deformed[4] += np.array([-0.4, 0.6])
-vertices_deformed[5] += np.array([-0.2, 0.2])
+centroid = np.mean(vertices, axis=0)
+
+vertices_enlarged = (vertices - centroid) * 1.05 + centroid
+vertices_deformed = get_star_shape_deformation(vertices_enlarged)
+# vertices_deformed = vertices_enlarged.copy()
+# vertices_deformed[3] += np.array([-0.4, 0.9])
+# vertices_deformed[4] += np.array([-0.4, 0.6])
+# vertices_deformed[5] += np.array([-0.2, 0.2])
 
 A = dict(vertices=vertices, segments=edges)
 tri = triangle.triangulate(A, 'pq20a0.005')
@@ -19,8 +25,8 @@ V2_original = np.array(tri['vertices'])
 V_original = np.column_stack([tri['vertices'], np.zeros(len(tri['vertices']))])
 F = np.array(tri['triangles'], dtype=int)
 
-W_bmlc = compute_bmlc(np.array(vertices), V2_original)
-W_mlc = compute_mlc(np.array(vertices), V2_original, True)
+W_bmlc = compute_bmlc(np.array(vertices_enlarged), V2_original)
+W_mlc, G_mlc = compute_mlc(np.array(vertices_enlarged), V2_original, False)
 
 print(f"BMLC shape: {W_bmlc.shape}, NaN: {np.isnan(W_bmlc).sum()}")
 print(f"MLC shape: {W_mlc.shape}, NaN: {np.isnan(W_mlc).sum()}")
@@ -36,6 +42,9 @@ min_xy = V2_original.min(axis=0)
 max_xy = V2_original.max(axis=0)
 UV = (V2_original - min_xy) / (max_xy - min_xy)
 
+angle_distortion = calculate_angle_distortion(np.array(vertices_deformed), G_mlc)
+area_distortion = calculate_area_distortion(np.array(vertices_deformed), G_mlc)
+
 mesh_original = ps.register_surface_mesh("original", V_original, F)
 mesh_original.add_parameterization_quantity("uv", UV, defined_on="vertices", enabled=True)
 mesh_original.add_color_quantity("texture", texture, defined_on='texture',
@@ -47,17 +56,23 @@ mesh_mlc.add_color_quantity("texture", texture, defined_on='texture',
                            param_name='uv', enabled=True)
 
 mesh_original.set_transform(np.array([
-    [1, 0, 0, -4.0],
+    [1, 0, 0, -6.0],
     [0, 1, 0, 0],
     [0, 0, 1, 0],
     [0, 0, 0, 1]
 ]))
 
 mesh_mlc.set_transform(np.array([
-    [1, 0, 0, 4.0],
+    [1, 0, 0, 6.0],
     [0, 1, 0, 0],
     [0, 0, 1, 0],
     [0, 0, 0, 1]
 ]))
+
+mesh_original.add_scalar_quantity("area_distortion", area_distortion,
+                             defined_on='vertices', enabled=True)
+
+mesh_original.add_scalar_quantity("angle_distortion", angle_distortion,
+                             defined_on='vertices', enabled=True)
 
 ps.show()

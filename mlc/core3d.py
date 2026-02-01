@@ -5,6 +5,9 @@ from .core import basic_mlc_fast
 
 
 class MlcMesh3d:
+    """
+    This class represents a Mesh for 3D-MLC computation.
+    """
     def __init__(self, cage_vertices: np.ndarray, cage_faces: np.ndarray):
         self.cage_vertices = cage_vertices.astype(np.float64)
         self.cage_faces = cage_faces
@@ -20,7 +23,13 @@ class MlcMesh3d:
 
 
     def compute_weights_mlc_3d(self, query_point, eps=1e-8, smlc = False):
-
+        """
+        Vectorized implementation of Maximum Likelihood Coordinates.
+        :param query_point: Vertex
+        :param eps: Numerical Stability Parameter
+        :param smlc: If true, scaling with biharmonic distances is applied
+        :return: MLC
+        """
         nV = self.cage_vertices.shape[0]
         nF = self.cage_faces.shape[0]
 
@@ -109,6 +118,12 @@ class MlcMesh3d:
         return w / w_sum
 
     def compute_all(self, points, smlc = False):
+        """
+        Calls a vectorized implementation of Maximum Likelihood Coordinates.
+        :param points: (n, d) vertices of the polytope
+        :param smlc: if True, scaling with biharmonic distances is applied
+        :return: Barycentric Coordinates
+        """
         res = []
         for p in points:
             res.append(self.compute_weights_mlc_3d(p, smlc))
