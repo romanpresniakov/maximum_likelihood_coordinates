@@ -14,13 +14,6 @@ class MlcMesh3d:
         self.num_vertices = cage_vertices.shape[0]
         self.num_faces = cage_faces.shape[0]
 
-        self.vertex_to_faces = [[] for _ in range(self.num_vertices)]
-        for f_idx, face in enumerate(self.cage_faces):
-            for v_idx in face:
-                self.vertex_to_faces[v_idx].append(f_idx)
-
-        self.vertex_degrees = np.array([len(f) for f in self.vertex_to_faces], dtype=np.float64)
-
 
     def compute_weights_mlc_3d(self, query_point, eps=1e-8, smlc = False):
         """
@@ -37,7 +30,7 @@ class MlcMesh3d:
         R = np.linalg.norm(V, axis=1)
 
         #handle vertex hit
-        if np.any(R < 1e-8):
+        if np.any(R < eps):
             w = np.zeros(nV)
             w[np.argmin(R)] = 1.0
             return w
@@ -60,10 +53,12 @@ class MlcMesh3d:
         b12 = np.arccos(np.clip(np.sum(v1 * v2, axis=1), -1, 1))
         b23 = np.arccos(np.clip(np.sum(v2 * v3, axis=1), -1, 1))
         b31 = np.arccos(np.clip(np.sum(v3 * v1, axis=1), -1, 1))
+
         # S
         sig0 = (b23 + b12 * np.sum(n12*n23, axis=1) + b31 * np.sum(n31*n23, axis=1)) * np.sin(b23)
         sig1 = (b31 + b23 * np.sum(n23*n31, axis=1) + b12 * np.sum(n12*n31, axis=1)) * np.sin(b31)
         sig2 = (b12 + b31 * np.sum(n31*n12, axis=1) + b23 * np.sum(n23*n12, axis=1)) * np.sin(b12)
+
         S = sig0[:, None] * v1 + sig1[:, None] * v2 + sig2[:, None] * v3
 
         S_norm = np.linalg.norm(S, axis=1) + eps
@@ -79,7 +74,7 @@ class MlcMesh3d:
             T[i2] += S_hat[j]
             face_count[[i0, i1, i2]] += 1.0
 
-        T /= face_count[:, None]
+        T /= np.maximum(face_count[:, None], 1.0)
         T_norm = np.linalg.norm(T, axis=1) + eps
         V_hat = T / T_norm[:, None]
         distances = None
@@ -94,12 +89,13 @@ class MlcMesh3d:
         if smlc:
             lambda_hat /= distances
         x = lambda_hat / T_norm
+        x_scaled = x / np.maximum(face_count, 1.0)
 
         # A2
         y = np.zeros(nF)
         for j in range(nF):
             i0, i1, i2 = f[j]
-            y[j] = x[i0] + x[i1] + x[i2]
+            y[j] = x_scaled[i0] + x_scaled[i1] + x_scaled[i2]
 
         # P1
         y /= S_norm

@@ -26,22 +26,20 @@ ps.init()
 
 # Load armadillo mesh and cage
 V_mesh, F_mesh = load_obj('data/horse/horse.obj')
-# V_cage, F_cage = load_obj('data/horse/bounding_meshb.obj')
+V_cage, F_cage = load_obj('data/horse/bounding_meshb.obj')
 
-cage_mesh = trimesh.load_mesh('data/horse/bounding_meshb.obj')
-cage_mesh.fix_normals()
-V_cage = np.array(cage_mesh.vertices)
-F_cage = np.array(cage_mesh.faces)
-
+# centroid = np.mean(V_cage, axis=0)
+#
+# V_cage = (V_cage - centroid) * 1.1 + centroid
 
 print(f"Mesh vertices: {V_mesh.shape}, Faces: {F_mesh.shape}")
 print(f"Cage vertices: {V_cage.shape}")
 
-V_cage_deformed, F_cage_deformed = load_obj("data/horse/deformed_bounding_mesh1b.obj")
+V_cage_deformed, F_cage_deformed = load_obj("data/horse/deformed_bounding_mesh3b.obj")
 
 print("Computing MLC weights...")
 mlc_mesh = MlcMesh3d(V_cage, F_cage)
-W_mlc = mlc_mesh.compute_all(V_mesh, True)
+W_mlc = mlc_mesh.compute_all(V_mesh, False)
 
 print(f"MLC shape: {W_mlc.shape}, NaN: {np.isnan(W_mlc).sum()}")
 
